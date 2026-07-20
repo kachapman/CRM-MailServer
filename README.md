@@ -148,6 +148,10 @@ Below is the complete list of parameters that can be set using environment varia
 - **STORAGE_BASE_DIR**: The path to the mail store. Defaults to `/var/vmail`.
 - **FIRST_DOMAIN**: The first virtual domain, where the postmaster address will be hosted. This domain should not coincide with the primary mail server domain. Defaults to `mailserver.onlyoffice.com`.
 - **DOMAIN_ADMIN_PASSWD**: The postmaster password. The default postmaster address is `postmaster@mailserver.onlyoffice.com`.
+- **ENABLE_CRM_MAIL_API**: Enable the parallel robust mail API service (default: YES). Provides full mail access (read/unread, bodies, attachments, account filtering) on port 8090 for external apps / CRM dashboards.
+- **CRM_MAIL_API_PORT**: Port for the robust mail API (default 8090).
+
+The legacy provisioning API remains on port 8081 for ONLYOFFICE Community Server compatibility.
 
 ## Storing Data
 

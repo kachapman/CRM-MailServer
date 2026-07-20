@@ -4,6 +4,8 @@ RUN yum -y update && yum -y install ca-certificates nss
 
 ADD iRedMail.repo /etc/yum.repos.d/iRedMail.repo
 ADD iRedMail /usr/src/iRedMail/
+# Copy the new parallel robust mail API (additive, does not affect legacy 8081 service)
+COPY crm_mail_api /opt/crm_mail_api/
 
 ARG VERSION="1.6.74"
 ARG RELEASE_DATE="2020-04-02"
@@ -34,6 +36,19 @@ RUN yum -y update && \
     ln -s /usr/local/ssl/bin/openssl /usr/bin/openssl && \
     echo '/usr/local/lib64' >> /etc/ld.so.conf && \
     ldconfig && \
+    # Build modern Python 3.11 for the parallel CRM Mail API service (modernization approved)
+    yum -y install zlib-devel bzip2-devel ncurses-devel sqlite-devel readline-devel tk-devel gdbm-devel libpcap-devel xz-devel expat-devel && \
+    wget https://www.python.org/ftp/python/3.11.9/Python-3.11.9.tgz && \
+    tar -xzf Python-3.11.9.tgz && \
+    cd Python-3.11.9 && \
+    ./configure --enable-optimizations --prefix=/usr/local --with-ensurepip=install --enable-shared && \
+    make -j$(nproc) && \
+    make altinstall && \
+    cd .. && \
+    rm -rf Python-3.11.9 Python-3.11.9.tgz && \
+    ln -sf /usr/local/bin/python3.11 /usr/local/bin/python3 && \
+    /usr/local/bin/python3 -m pip install --upgrade pip setuptools wheel && \
+    ldconfig && \
     yum -y install postfix mysql-server mysql perl-DBD-MySQL mod_auth_mysql && \
     yum -y install php php-common php-gd php-xml php-mysql php-ldap php-pgsql php-imap php-mbstring php-pecl-apc php-intl php-mcrypt && \
     yum -y install httpd mod_ssl cluebringer dovecot dovecot-pigeonhole dovecot-managesieve && \
@@ -50,6 +65,8 @@ RUN yum -y update && \
     bash /usr/src/iRedMail/pkgs_install.sh && \
     mkdir -p /etc/pki/tls/mailserver /var/vmail && \
     pip install -r /usr/src/iRedMail/tools/scripts/requirements.txt && \
+    # Install CRM Mail robust API (Python 3.11 we just built)
+    /usr/local/bin/python3 -m pip install -r /opt/crm_mail_api/requirements.txt && \
     openssl dhparam -out /etc/pki/tls/dhparams.pem 1024
 
 VOLUME ["/var/log"]
@@ -66,6 +83,10 @@ EXPOSE 995
 EXPOSE 8081
 EXPOSE 3306
 EXPOSE 4190
+# Parallel robust mail API (Python FastAPI service for full mail functionality,
+# read/unread, attachments, account filtering, CRM/universal mail support).
+# See crm_mail_api/ and docs/robust-mail-api-design.md
+EXPOSE 8090
 
 CMD export CONFIGURATION_ONLY='YES' && \
     export USE_DOCKER='YES' && \

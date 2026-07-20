@@ -84,6 +84,20 @@ service spamassassin start
 service fail2ban start
 service spamtrainer start
 
+# Start parallel robust mail API (FastAPI) if enabled.
+# This is additive and does not affect the legacy provisioning API (8081)
+# or Community Server compatibility. See PLAN.md and crm_mail_api/.
+if [ "${ENABLE_CRM_MAIL_API:-YES}" = "YES" ]; then
+    CRM_API_PORT=${CRM_MAIL_API_PORT:-8090}
+    CRM_API_DIR="/opt/crm_mail_api"
+    if [ -d "$CRM_API_DIR" ] && [ -x /usr/local/bin/python3 ]; then
+        echo "Starting CRM Mail robust API on port ${CRM_API_PORT}..."
+        (cd /opt && /usr/local/bin/python3 -m uvicorn crm_mail_api.main:app --host 0.0.0.0 --port "${CRM_API_PORT}" --log-level info) &
+    else
+        echo "CRM Mail API not started (/usr/local/bin/python3 or ${CRM_API_DIR} missing; see modernization notes in PLAN.md)"
+    fi
+fi
+
 rm -f ${MYSQL_DEFAULTS_FILE_ROOT} &>/dev/null
 rm -f ${TMP_SQL} 2>/dev/null
 unset TMP_SQL
